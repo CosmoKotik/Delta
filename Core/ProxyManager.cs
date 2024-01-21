@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Delta.Network;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +22,7 @@ namespace Delta.Core
         private int _connectionTimeout = 10000;
 
         public int ReadTimeout { get { return _readTimeout; } }
-        private int _readTimeout = 30000;
+        private int _readTimeout = 3000;
 
         public string Motd { get { return _motd; } }
         private string _motd = "Delta proxy";
@@ -35,6 +36,12 @@ namespace Delta.Core
         public bool CheckForUpdates { get { return _checkForUpdates; } }
         private bool _checkForUpdates = true;
 
+        public bool AllowManualGC { get { return _allowManualGC; } }
+        private bool _allowManualGC = true;
+
+        public int GCMemoryActivationThreshold { get { return _GCMemoryActivationThreshold; } }
+        private int _GCMemoryActivationThreshold = 100;
+
         /*public int CompressionLevel { get { return _compressionLevel; } }
         private int _compressionLevel = -1;*/
 
@@ -47,7 +54,35 @@ namespace Delta.Core
                 Logger.Log("No updates");   //temporary lol
             }
 
+            if (AllowManualGC)
+            {
+                new Thread(() => ManualGCCleaner()).Start();
+            }
+
             Logger.Log($"Starting delta version: {DeltaVersion}");
+
+            NetworkManager nm = new NetworkManager(this);
+            nm.Init(Bind);
+        }
+
+        private void ManualGCCleaner()
+        {
+            while (Thread.CurrentThread.IsAlive)
+            {
+                long memory = GC.GetTotalMemory(false);
+                double memoryMB = memory / 1000000;
+
+                if (memoryMB > _GCMemoryActivationThreshold)
+                {
+                    Logger.Warn("Running manual garbage collector.");
+
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                }
+
+                Thread.Sleep(5000);
+            }
         }
     }
 }
