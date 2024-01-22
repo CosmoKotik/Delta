@@ -1,4 +1,5 @@
-﻿using Delta.Network;
+﻿using Delta.Core.Config;
+using Delta.Network;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,9 @@ namespace Delta.Core
     {
         public string DeltaVersion { get { return _deltaVersion; } }
         private string _deltaVersion = "Delta 1.0.0";
+
+        public string ConfigVersion { get { return _configVersion; } }
+        private string _configVersion = "1.0";
 
         public int MaxPlayers { get { return _maxPlayers; } }
         private int _maxPlayers = 100;
@@ -47,6 +51,31 @@ namespace Delta.Core
 
         public void Start()
         {
+            Logger.Log("Loading config...");
+            try
+            {
+                Configs conf = ConfigManager.Load(this);
+                if (conf != null)
+                {
+                    _configVersion = conf.ConfigVersion;
+                    _maxPlayers = conf.MaxPlayers;
+                    _compressionThreshold = conf.CompressionThreshold;
+                    _connectionTimeout = conf.ConnectionTimeout;
+                    _readTimeout = conf.ReadTimeout;
+                    _motd = conf.Motd;
+                    _bind = conf.Bind;
+                    _onlineMode = conf.OnlineMode;
+                    _checkForUpdates = conf.CheckForUpdates;
+                    _allowManualGC = conf.AllowManualGC;
+                    _GCMemoryActivationThreshold = conf.GCMemoryActivationThreshold;
+
+                    Logger.Log("Config loaded successfully.");
+                }
+                else
+                    Logger.Log("Config generated successfully.");
+            }
+            catch (Exception e) { Logger.Error($"Failed to load config: {e}"); return; }
+
             if (this.CheckForUpdates)
             {
                 //Check for update code
