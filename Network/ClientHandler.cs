@@ -24,7 +24,7 @@ namespace Delta.Network
         public int BufferSize { get; set; } = 1048576;
         private Socket _server;
         private Socket _client;
-
+      
         private bool _isAvailable = true;
 
         private States _currentState = States.Handshake;
@@ -33,6 +33,13 @@ namespace Delta.Network
         { 
             this.ProxyManager = pm;
             this.NetworkManager = nm;
+            Test();
+        }
+
+        public void Test()
+        {
+            byte[] bytes = new byte[] { 2, 0, 0 };
+            ParseAllBytePacket(bytes);
         }
 
         public async Task HandleClient(Socket sock, CancellationTokenSource cancellationTokenSource)
@@ -75,30 +82,31 @@ namespace Delta.Network
                             byte[] correcetdBytes = new byte[receivedTask.Result];
                             Array.Copy(bytes, correcetdBytes, receivedTask.Result);
                             //Console.WriteLine("zalupa: {0}", BitConverter.ToString(correcetdBytes).Replace("-", " ") + "   " + correcetdBytes.Length);
-                            bm.SetBytes(correcetdBytes);
-                            int packetSize = bm.GetPacketSize() - 1;
-                            int packetID = bm.GetPacketId();
+                            //bm.SetBytes(correcetdBytes);
+                            //int packetSize = bm.GetPacketSize() - 1;
+                            //int packetID = bm.GetPacketId();
 
-                            buffer = new byte[packetSize];
-                            Array.Copy(bm.GetBytes(), buffer, packetSize);
+                            //buffer = new byte[packetSize];
+                            //Array.Copy(bm.GetBytes(), buffer, packetSize);
 
-                            isStatus = HandleHandshake(buffer, correcetdBytes, packetID);
+                            //isStatus = HandleHandshake(buffer, correcetdBytes, packetID);
+                            ParseAllBytePacket(correcetdBytes, false);
 
-                            if (bytes.Length > packetSize)
-                            {
-                                try
-                                {
-                                    bm.RemoveRangeByte(packetSize);
-                                    packetSize = bm.GetPacketSize() - 1;
-                                    packetID = bm.GetPacketId();
+                            //if (bytes.Length > packetSize)
+                            //{
+                            //    try
+                            //    {
+                            //        bm.RemoveRangeByte(packetSize);
+                            //        packetSize = bm.GetPacketSize() - 1;
+                            //        packetID = bm.GetPacketId();
 
-                                    buffer = new byte[packetSize];
-                                    Array.Copy(bm.GetBytes(), buffer, packetSize);
-                                    //Console.WriteLine("Received: {0}", BitConverter.ToString(buffer).Replace("-", " ") + "   " + buffer.Length);
-                                    isStatus = HandleHandshake(buffer, correcetdBytes, packetID);
-                                }
-                                catch { }
-                            }
+                            //        buffer = new byte[packetSize];
+                            //        Array.Copy(bm.GetBytes(), buffer, packetSize);
+                            //        //Console.WriteLine("Received: {0}", BitConverter.ToString(buffer).Replace("-", " ") + "   " + buffer.Length);
+                            //        isStatus = HandleHandshake(buffer, correcetdBytes, packetID);
+                            //    }
+                            //    catch { }
+                            //}
                         }
 
                         await Task.Delay(1);
@@ -139,7 +147,7 @@ namespace Delta.Network
                                 Array.Copy(buffer, bytes, received);
 
                                 //HandleClientBytes(bytes);
-
+                                ParseAllBytePacket(bytes, false);
                                 //await SendToClient(buffer);
                                 using (CancellationTokenSource source = new CancellationTokenSource())
                                 {
@@ -168,6 +176,7 @@ namespace Delta.Network
                                 Array.Copy(buffer, bytes, received);
 
                                 //await SendToServer(buffer);
+                                ParseAllBytePacket(bytes, true);
                                 using (CancellationTokenSource source = new CancellationTokenSource())
                                 {
                                     CancellationToken token = source.Token;
@@ -251,25 +260,46 @@ namespace Delta.Network
                     return false;
                     break;
             }
-
+           
             return false;
         }
 
-        private void ParseAllBytePacket(byte[] bytes)
+
+        private void ParseAllBytePacket(byte[] bytes, bool isServer = false)
         {
             BufferManager bm = new BufferManager();
             bm.SetBytes(bytes);
 
-            int packetLength = bm.GetPacketSize();
-            int totalOffsetLength = 0;
+            int packetSizeLength = bm.GetVarIntOffset();
+            int packetLength = bm.GetPacketSize() - 1;
+            int packetId = bm.GetPacketId();
+            int totalOffsetLength = packetLength + packetSizeLength + 1;
 
-            while (packetLength < bytes.Length && totalOffsetLength < bm.GetBytes().Length)
+            byte[] bytesSeciton = new byte[packetLength];
+            Array.Copy(bytes, bytesSeciton, packetLength);
+            while (totalOffsetLength <= bytes.Length)
             {
-                totalOffsetLength += packetLength + bm.GetIntToVarIntLength(packetLength);
+                if (isServer)
+                    HandleServerBytes(bytesSeciton, packetId);
+                else
+                    HandleClientBytes(bytesSeciton, packetId);
+
+                if (totalOffsetLength != bytes.Length)
+                    bm.RemoveRangeByte(packetLength);
+
+                packetSizeLength = bm.GetVarIntOffset();
+                packetLength = bm.GetPacketSize() - 1;
+                packetId = bm.GetPacketId();
+
+                bytesSeciton = new byte[packetLength];
+                Array.Copy(bytes, bytesSeciton, packetLength);
+
+                totalOffsetLength += packetLength + packetSizeLength + 1;
             }
         }
 
-        private void HandleServerBytes(byte[] buffer)
+        
+        private void HandleServerBytes(byte[] buffer, int packetId)
         {
             BufferManager bm = new BufferManager();
 
@@ -294,7 +324,7 @@ namespace Delta.Network
             }
         }
 
-        private void HandleClientBytes(byte[] buffer)
+        private void HandleClientBytes(byte[] buffer, int packetId)
         {
             BufferManager bm = _bufferManager;
 
