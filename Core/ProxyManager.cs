@@ -5,11 +5,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Delta.Core
 {
     internal class ProxyManager
     {
+        #region Editable configs
         public string DeltaVersion { get { return _deltaVersion; } }
         private string _deltaVersion = "Delta 1.0.0";
 
@@ -46,8 +48,24 @@ namespace Delta.Core
         public int GCMemoryActivationThreshold { get { return _GCMemoryActivationThreshold; } }
         private int _GCMemoryActivationThreshold = 100;
 
+        public bool AllowProxy { get { return _allowProxy; } }
+        private bool _allowProxy = true;
+        public string DeltaAddress { get { return _deltaAddress; } }
+        private string _deltaAddress = "default";
+        
+        public bool EnforceSecureChat { get { return _enforceSecureChat; } }
+        private bool _enforceSecureChat = true;
+
         /*public int CompressionLevel { get { return _compressionLevel; } }
         private int _compressionLevel = -1;*/
+        #endregion
+
+        #region Server configs
+        public int CurrentOnline { get { return _currentOnline; } }
+        private int _currentOnline = 0;
+        public string FaviconBase64 { get { return _faviconBase64; } }
+        private string _faviconBase64 = "";
+        #endregion
 
         public void Start()
         {
@@ -68,6 +86,11 @@ namespace Delta.Core
                     _checkForUpdates = conf.CheckForUpdates;
                     _allowManualGC = conf.AllowManualGC;
                     _GCMemoryActivationThreshold = conf.GCMemoryActivationThreshold;
+                    _allowProxy = conf.AllowProxy;
+                    _enforceSecureChat = conf.EnforceSecureChat;
+
+                    if (conf.DeltaAddress.Equals("default"))
+                        _deltaAddress = _bind;
 
                     Logger.Log("Config loaded successfully.");
                 }
@@ -86,6 +109,12 @@ namespace Delta.Core
             if (AllowManualGC)
             {
                 new Thread(() => ManualGCCleaner()).Start();
+            }
+
+            if (File.Exists("favicon.png"))
+            {
+                byte[] imageBytes = System.IO.File.ReadAllBytes("favicon.png");
+                _faviconBase64 = Convert.ToBase64String(imageBytes);
             }
 
             Logger.Log($"Starting delta version: {DeltaVersion}");
@@ -112,6 +141,11 @@ namespace Delta.Core
 
                 Thread.Sleep(5000);
             }
+        }
+
+        public void UpdateCurrentOnline(int value)
+        {
+            _currentOnline = value;
         }
     }
 }

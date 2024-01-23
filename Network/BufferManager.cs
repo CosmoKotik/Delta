@@ -275,6 +275,19 @@ namespace Delta.Network
 
             return BitConverter.ToInt64(result);
         }
+        public short GetShort()
+        {
+            byte[] result = new byte[2];
+
+            for (int i = 0; i < 2; i++)
+            {
+                result[i] = _buffer[i];
+            }
+
+            _buffer.RemoveRange(0, 2);
+
+            return BitConverter.ToInt16(result);
+        }
         public string GetString()
         {
             byte[] result = new byte[_buffer[0]];
@@ -301,6 +314,10 @@ namespace Delta.Network
         {
             _buffer = bytes.ToList();
         }
+        public void InsertAt(byte[] bytes, int offset)
+        {
+            Array.Copy(bytes, _buffer.ToArray(), offset);
+        }
         public void InsertBytes(byte[] bytes)
         {
             _buffer.AddRange(bytes);
@@ -309,7 +326,10 @@ namespace Delta.Network
         {
             return _buffer.ToArray();
         }
-
+        public void RemoveRangeByte(int range)
+        {
+            _buffer.RemoveRange(0, range);
+        }
         public void Dispose()
         {
             GC.SuppressFinalize(this);

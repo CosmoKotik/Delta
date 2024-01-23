@@ -36,11 +36,17 @@ namespace Delta.Core.Config
                         ["CompressionThreshold"] = pm.CompressionThreshold,
                         ["ConnectionTimeout"] = pm.ConnectionTimeout,
                         ["ReadTimeout"] = pm.ReadTimeout,
+                        ["AllowProxy"] = pm.AllowProxy,
+                        ["DeltaAddress"] = pm.DeltaAddress,
                     },
                     ["GC"] =
                     {
                         ["AllowManualGC"] = pm.AllowManualGC,
                         ["GCMemoryActivationThreshold"] = pm.GCMemoryActivationThreshold,
+                    },
+                    ["Security"] =
+                    {
+                        ["EnforceSecureChat"] = pm.EnforceSecureChat,
                     }
                 };
 
@@ -71,6 +77,9 @@ namespace Delta.Core.Config
                     OnlineMode = (bool)model["Main"]["OnlineMode"],
                     CheckForUpdates = (bool)model["Info"]["CheckForUpdates"],
                     AllowManualGC = (bool)model["GC"]["AllowManualGC"],
+                    AllowProxy = (bool)model["Connection"]["AllowProxy"],
+                    DeltaAddress = (string)model["Connection"]["DeltaAddress"],
+                    EnforceSecureChat = (bool)model["Security"]["EnforceSecureChat"],
                 };
 
                 return config;

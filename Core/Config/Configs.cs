@@ -12,6 +12,7 @@ namespace Delta.Core.Config
         public string ConfigVersion;
         public string Motd;
         public string Bind;
+        public string DeltaAddress;
 
         public int MaxPlayers;
         public int CompressionThreshold;
@@ -22,5 +23,7 @@ namespace Delta.Core.Config
         public bool OnlineMode;
         public bool CheckForUpdates;
         public bool AllowManualGC;
+        public bool AllowProxy;
+        public bool EnforceSecureChat;
     }
 }

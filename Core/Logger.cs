@@ -11,19 +11,19 @@ namespace Delta.Core
         public static void Log(string msg)
         { 
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine($"[{DateTime.Now.ToString()} LOG]: {msg}");
+            Console.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss")} LOG]: {msg}");
         }
 
         public static void Warn(string msg)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[{DateTime.Now.ToString()} WARN]: {msg}");
+            Console.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss")} WARN]: {msg}");
         }
 
         public static void Error(string msg)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[{DateTime.Now.ToString()} ERROR]: {msg}");
+            Console.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss")} ERROR]: {msg}");
         }
     }
 }
