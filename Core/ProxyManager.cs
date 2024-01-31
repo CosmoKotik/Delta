@@ -28,7 +28,7 @@ namespace Delta.Core
         private int _connectionTimeout = 10000;
 
         public int ReadTimeout { get { return _readTimeout; } }
-        private int _readTimeout = 3000;
+        private int _readTimeout = 30000;
 
         public string Motd { get { return _motd; } }
         private string _motd = "Delta proxy";

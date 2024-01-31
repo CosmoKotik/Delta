@@ -17,12 +17,10 @@ namespace Delta.Network.Packets.Status
 
         public void Handle(byte[] bytes)
         {
-            /*BufferManager bm = new BufferManager();
+            BufferManager bm = new BufferManager();
             bm.SetBytes(bytes);
 
-            long payload = bm.GetLong();
-
-            bm.SetPacketId(0x00);*/
+            bm.SetPacketId(0x00);
 
             _clientHandler.SendToClient(bytes, false);
         }

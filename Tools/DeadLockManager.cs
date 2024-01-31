@@ -4,13 +4,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Delta.Tools
 {
     public static class DLM
     {
         //private static Dictionary<object, LockClass> _locks = new Dictionary<object, LockClass>();
-        private static Dictionary<int, int> _lockHashcodes = new Dictionary<int, int>();    //Key = hashcode of name of object, Value = thread id
+        private static Dictionary<string, int> _lockHashcodes = new Dictionary<string, int>();    //Key = name of object, Value = thread id
         private static object _lock = new object();
 
         public static void TryLock<T>(ref T obj, int threadId = -1)
@@ -18,14 +19,14 @@ namespace Delta.Tools
             if (threadId == -1)
                 threadId = Thread.CurrentThread.ManagedThreadId;
 
-            //string name = $"{GetCaller()}.{nameof(obj)}";
-            int hashcode = nameof(obj).GetHashCode() + GetCaller().GetHashCode();
+            string name = $"{GetCaller()}.{nameof(obj)}";
+            //int hashcode = nameof(obj).GetHashCode() + GetCaller().GetHashCode();
             bool hasObject = false;
 
             lock (_lock)
             {
-                if (!_lockHashcodes.ContainsKey(hashcode))
-                    _lockHashcodes.Add(hashcode, threadId);
+                if (!_lockHashcodes.ContainsKey(name))
+                    _lockHashcodes.Add(name, threadId);
                 else
                     hasObject = true;
             }
@@ -33,7 +34,7 @@ namespace Delta.Tools
             if (!hasObject)
                 return;
 
-            while (_lockHashcodes.ContainsKey(hashcode))
+            while (_lockHashcodes.ContainsKey(name))
                 Thread.Sleep(1);
         }
 
@@ -42,14 +43,14 @@ namespace Delta.Tools
             if (threadId == -1)
                 threadId = Thread.CurrentThread.ManagedThreadId;
 
-            //string name = $"{GetCaller()}.{nameof(obj)}";
-            int hashcode = nameof(obj).GetHashCode() + GetCaller().GetHashCode();
+            string name = $"{GetCaller()}.{nameof(obj)}";
+            //int hashcode = nameof(obj).GetHashCode() + GetCaller().GetHashCode();
 
             lock (_lock)
             {
-                if (_lockHashcodes.ContainsKey(hashcode) &&
+                if (_lockHashcodes.ContainsKey(name) &&
                     _lockHashcodes.ContainsValue(threadId))
-                        _lockHashcodes.Remove(hashcode, out threadId);
+                        _lockHashcodes.Remove(name, out threadId);
             }
         }
 

@@ -3,6 +3,7 @@ using Delta.Enums;
 using Delta.Network.Packets.Handshake;
 using Delta.Network.Packets.Login;
 using Delta.Network.Packets.Status;
+using Delta.Tools;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -147,7 +148,8 @@ namespace Delta.Network
                                 Array.Copy(buffer, bytes, received);
 
                                 //HandleClientBytes(bytes);
-                                ParseAllBytePacket(bytes, false);
+                                Console.WriteLine("Received initial client: {0}", BitConverter.ToString(bytes).Replace("-", " ") + "   " + bytes.Length);
+                                //await Task.Run(() => ParseAllBytePacket(bytes, false));
                                 //await SendToClient(buffer);
                                 using (CancellationTokenSource source = new CancellationTokenSource())
                                 {
@@ -176,7 +178,8 @@ namespace Delta.Network
                                 Array.Copy(buffer, bytes, received);
 
                                 //await SendToServer(buffer);
-                                ParseAllBytePacket(bytes, true);
+                                Console.WriteLine("Received initial server: {0}", BitConverter.ToString(bytes).Replace("-", " ") + "   " + bytes.Length);
+                                //await Task.Run(() => ParseAllBytePacket(bytes, true));
                                 using (CancellationTokenSource source = new CancellationTokenSource())
                                 {
                                     CancellationToken token = source.Token;
@@ -224,7 +227,7 @@ namespace Delta.Network
         private bool HandleHandshake(byte[] bytes, byte[] buffer, int packetID)
         {
             //Returns cancellation state
-
+            
             switch (packetID)
             {
                 case 0x00:
@@ -240,7 +243,7 @@ namespace Delta.Network
                         _currentState = (States)handshake.NextState;
                         if (handshake.NextState != (int)States.Status)
                             return false;
-
+                        //new S_StatusResponsePacket(this).Write();
                         return true;
                     }
                     else if (_currentState.Equals(States.Status))
@@ -252,7 +255,7 @@ namespace Delta.Network
                 case 0x01:
                     if (_currentState.Equals(States.Status))
                     {
-                        new S_PingPacket(this).Handle(buffer);
+                        new S_PingPacket(this).Handle(bytes);
                         return true;
                     }
                     break;
@@ -274,9 +277,12 @@ namespace Delta.Network
             int packetId = bm.GetPacketId();
             int totalOffsetLength = packetLength + packetSizeLength + 1;
 
+            Console.WriteLine("Received initial: {0}", BitConverter.ToString(bytes).Replace("-", " ") + "   " + bytes.Length);
+            //Console.WriteLine("Received: {0}", BitConverter.ToString(bm.GetBytes()).Replace("-", " ") + "   " + bm.GetBytes().Length);
             byte[] bytesSeciton = new byte[packetLength];
-            Array.Copy(bytes, bytesSeciton, packetLength);
-            while (totalOffsetLength <= bytes.Length)
+            Array.Copy(bm.GetBytes(), bytesSeciton, packetLength);
+            Console.WriteLine("Received: {0}", BitConverter.ToString(bytesSeciton).Replace("-", " ") + "   " + packetId);
+            while (totalOffsetLength < bytes.Length)
             {
                 if (isServer)
                     HandleServerBytes(bytesSeciton, packetId);
@@ -291,24 +297,20 @@ namespace Delta.Network
                 packetId = bm.GetPacketId();
 
                 bytesSeciton = new byte[packetLength];
-                Array.Copy(bytes, bytesSeciton, packetLength);
-
-                totalOffsetLength += packetLength + packetSizeLength + 1;
+                Array.Copy(bm.GetBytes(), bytesSeciton, packetLength);
+                Console.WriteLine("Received: {0}", BitConverter.ToString(bytesSeciton).Replace("-", " ") + "   " + packetId);
+                totalOffsetLength += packetLength + packetSizeLength;
             }
         }
 
         
-        private void HandleServerBytes(byte[] buffer, int packetId)
+        private void HandleServerBytes(byte[] bytes, int packetID)
         {
             BufferManager bm = new BufferManager();
 
-            bm.SetBytes(buffer);
-            /*int packetSize = buffer.Length - (bm.GetVarIntOffset());
-            int packetID = bm.GetPacketId(bm.GetVarIntOffset());*/
-            int packetSize = bm.GetPacketSize() - 1;
-            int packetID = bm.GetPacketId();
+            bm.SetBytes(bytes);
 
-            byte[] bytes = bm.GetBytes();
+            DLM.TryLock(ref _currentState);
 
             switch (_currentState)
             { 
@@ -321,19 +323,17 @@ namespace Delta.Network
                     }
                     break;
             }
+
+            DLM.RemoveLock(ref _currentState);
         }
 
-        private void HandleClientBytes(byte[] buffer, int packetId)
+        private void HandleClientBytes(byte[] bytes, int packetID)
         {
             BufferManager bm = _bufferManager;
 
-            bm.SetBytes(buffer);
-            /*int packetSize = buffer.Length - (bm.GetVarIntOffset());
-            int packetID = bm.GetPacketId(bm.GetVarIntOffset());*/
-            int packetSize = bm.GetPacketSize() - 1;
-            int packetID = bm.GetPacketId();
+            bm.SetBytes(bytes);
 
-            byte[] bytes = bm.GetBytes();
+            DLM.TryLock(ref _currentState);
 
             switch (_currentState)
             {
@@ -341,7 +341,16 @@ namespace Delta.Network
                     switch (packetID)
                     {
                         case 0x00:
-                            _currentState = States.Login;
+                            HandleHandshake(bytes, bytes, packetID);
+                            //_currentState = States.Login;
+                            break;
+                    }
+                    break;
+                case States.Status:
+                    switch (packetID)
+                    {
+                        case 0x00:
+                            HandleHandshake(bytes, bytes, packetID);
                             break;
                     }
                     break;
@@ -356,6 +365,8 @@ namespace Delta.Network
                     }
                     break;
             }
+
+            DLM.RemoveLock(ref _currentState);
         }
 
         public void SendToClient(byte[] bytes, bool includeSize = true)
