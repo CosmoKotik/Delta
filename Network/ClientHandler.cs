@@ -258,7 +258,6 @@ namespace Delta.Network
                     break;
                 default:
                     return false;
-                    break;
             }
            
             return false;
